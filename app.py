@@ -125,9 +125,7 @@ if "history" not in st.session_state:
 st.subheader("Make a guess")
 
 st.info(
-    # FIXME: Logic breaks here — range hardcoded "1 and 100"; ignores low/high so
-    # Easy/Hard show the wrong range. (Attempts math also reflects the start=1 bug.)
-    f"Guess a number between 1 and 100. "
+    f"Guess a number between {low} and {high}. "
     f"Attempts left: {attempt_limit - st.session_state.attempts}"
 )
 
