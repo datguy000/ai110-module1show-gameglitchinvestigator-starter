@@ -56,18 +56,17 @@ def check_guess(guess, secret):
 
 def update_score(current_score: int, outcome: str, attempt_number: int):
     if outcome == "Win":
-        # FIXME: Logic breaks here — double off-by-one: attempt_number is already
-        # incremented, then +1 again, so wins award fewer points than intended.
-        points = 100 - 10 * (attempt_number + 1)
+        # FIX: AI identified two scoring bugs here. Removed the extra +1 — attempt_number
+        # is already the current count, so (attempt_number + 1) was double-counting and
+        # underpaying points on every win.
+        points = 100 - 10 * attempt_number
         if points < 10:
             points = 10
         return current_score + points
 
     if outcome == "Too High":
-        # FIXME: Logic breaks here — a wrong "Too High" guess ADDS points on even
-        # attempts; Too High vs Too Low scoring is inconsistent.
-        if attempt_number % 2 == 0:
-            return current_score + 5
+        # FIX: AI flagged that Too High was rewarding +5 on even attempts while Too Low
+        # always cost -5. Removed the even/odd branch so both directions cost the same.
         return current_score - 5
 
     if outcome == "Too Low":
