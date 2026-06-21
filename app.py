@@ -2,6 +2,10 @@ import random
 import streamlit as st
 
 def get_range_for_difficulty(difficulty: str):
+    # FIXME: Logic breaks here — difficulty scaling is wrong: Hard (1-50) has a
+    # SMALLER range than Normal (1-100). Range should grow with difficulty, and
+    # attempts must stay >= ceil(log2(range)) (+buffer) or some games are
+    # unwinnable under optimal play.
     if difficulty == "Easy":
         return 1, 20
     if difficulty == "Normal":
@@ -26,6 +30,8 @@ def parse_guess(raw: str):
     except Exception:
         return False, None, "That is not a number."
 
+    # FIXME: Logic breaks here — no range validation; any integer (200, -5) is
+    # accepted because low/high are never passed in or checked.
     return True, value, None
 
 
@@ -35,10 +41,13 @@ def check_guess(guess, secret):
 
     try:
         if guess > secret:
-            return "Too High", "📈 Go HIGHER!"
+            return "Too High", "📉 Go LOWER!"
         else:
-            return "Too Low", "📉 Go LOWER!"
+            return "Too Low", "📈 Go HIGHER!"
     except TypeError:
+        # FIXME: Logic breaks here — falls back to lexicographic string comparison
+        # (e.g. "100" < "9"), giving wrong outcomes. Only exists to mask the
+        # str(secret) cast at the call site (~L159).
         g = str(guess)
         if g == secret:
             return "Win", "🎉 Correct!"
@@ -49,12 +58,16 @@ def check_guess(guess, secret):
 
 def update_score(current_score: int, outcome: str, attempt_number: int):
     if outcome == "Win":
+        # FIXME: Logic breaks here — double off-by-one: attempt_number is already
+        # incremented, then +1 again, so wins award fewer points than intended.
         points = 100 - 10 * (attempt_number + 1)
         if points < 10:
             points = 10
         return current_score + points
 
     if outcome == "Too High":
+        # FIXME: Logic breaks here — a wrong "Too High" guess ADDS points on even
+        # attempts; Too High vs Too Low scoring is inconsistent.
         if attempt_number % 2 == 0:
             return current_score + 5
         return current_score - 5
@@ -78,6 +91,9 @@ difficulty = st.sidebar.selectbox(
 )
 
 attempt_limit_map = {
+    # FIXME: Logic breaks here — attempt counts vs range (see
+    # get_range_for_difficulty): under optimal play attempts must exceed
+    # ceil(log2(range)).
     "Easy": 6,
     "Normal": 8,
     "Hard": 5,
@@ -90,9 +106,13 @@ st.sidebar.caption(f"Range: {low} to {high}")
 st.sidebar.caption(f"Attempts allowed: {attempt_limit}")
 
 if "secret" not in st.session_state:
+    # FIXME: Logic breaks here — secret is generated once and cached; changing
+    # difficulty recomputes low/high but never regenerates the secret.
     st.session_state.secret = random.randint(low, high)
 
 if "attempts" not in st.session_state:
+    # FIXME: Logic breaks here — starts at 1, not 0; causes the 8/7/1 mismatch
+    # (sidebar=limit, info=limit-1, debug=1). New Game resets to 0 (inconsistent).
     st.session_state.attempts = 1
 
 if "score" not in st.session_state:
@@ -107,6 +127,8 @@ if "history" not in st.session_state:
 st.subheader("Make a guess")
 
 st.info(
+    # FIXME: Logic breaks here — range hardcoded "1 and 100"; ignores low/high so
+    # Easy/Hard show the wrong range. (Attempts math also reflects the start=1 bug.)
     f"Guess a number between 1 and 100. "
     f"Attempts left: {attempt_limit - st.session_state.attempts}"
 )
@@ -132,6 +154,9 @@ with col3:
     show_hint = st.checkbox("Show hint", value=True)
 
 if new_game:
+    # FIXME: Logic breaks here — incomplete reset: score/status/history are NOT
+    # cleared, so after a win the status guard stops the new game. Also uses
+    # hardcoded randint(1, 100) instead of the difficulty's low/high.
     st.session_state.attempts = 0
     st.session_state.secret = random.randint(1, 100)
     st.success("New game started.")
@@ -145,6 +170,8 @@ if st.session_state.status != "playing":
     st.stop()
 
 if submit:
+    # FIXME: Logic breaks here — attempts incremented BEFORE validation, so an
+    # empty/invalid guess still consumes an attempt and is appended to history.
     st.session_state.attempts += 1
 
     ok, guess_int, err = parse_guess(raw_guess)
@@ -155,6 +182,8 @@ if submit:
     else:
         st.session_state.history.append(guess_int)
 
+        # FIXME: Logic breaks here — on even attempts the secret is cast to str,
+        # forcing check_guess into its broken string-comparison path. Branch is spurious.
         if st.session_state.attempts % 2 == 0:
             secret = str(st.session_state.secret)
         else:
@@ -186,6 +215,10 @@ if submit:
                     f"The secret was {st.session_state.secret}. "
                     f"Score: {st.session_state.score}"
                 )
+
+    # FIXME: Logic breaks here — submit branch never calls st.rerun(), and the
+    # info/debug/history panels above render BEFORE this handler, so the UI shows
+    # stale state ("guesses populate after a delay").
 
 st.divider()
 st.caption("Built by an AI that claims this code is production-ready.")
