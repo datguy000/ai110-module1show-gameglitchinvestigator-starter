@@ -2,17 +2,14 @@ import random
 import streamlit as st
 
 def get_range_for_difficulty(difficulty: str):
-    # FIXME: Logic breaks here — difficulty scaling is wrong: Hard (1-50) has a
-    # SMALLER range than Normal (1-100). Range should grow with difficulty, and
-    # attempts must stay >= ceil(log2(range)) (+buffer) or some games are
-    # unwinnable under optimal play.
+    # FIX: Manual Fix — corrected ranges for Normal and Hard difficulties
     if difficulty == "Easy":
         return 1, 20
     if difficulty == "Normal":
-        return 1, 100
-    if difficulty == "Hard":
         return 1, 50
-    return 1, 100
+    if difficulty == "Hard":
+        return 1, 100
+    return 1, 50
 
 
 def parse_guess(raw: str):
@@ -39,6 +36,7 @@ def check_guess(guess, secret):
     if guess == secret:
         return "Win", "🎉 Correct!"
 
+    # FIX: inverted logic swapped for accuracy
     try:
         if guess > secret:
             return "Too High", "📉 Go LOWER!"
@@ -91,12 +89,11 @@ difficulty = st.sidebar.selectbox(
 )
 
 attempt_limit_map = {
-    # FIXME: Logic breaks here — attempt counts vs range (see
-    # get_range_for_difficulty): under optimal play attempts must exceed
-    # ceil(log2(range)).
+    # FIX: Tuning fix for attempts based on optimal startegy
+    # ceil(log2(range)) + 1 (for off-by-one forgiveness)
     "Easy": 6,
-    "Normal": 8,
-    "Hard": 5,
+    "Normal": 7,
+    "Hard": 8,
 }
 attempt_limit = attempt_limit_map[difficulty]
 
