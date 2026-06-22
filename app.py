@@ -177,16 +177,14 @@ if st.session_state.status != "playing":
     st.stop()
 
 if submit:
-    # FIXME: Logic breaks here — attempts incremented BEFORE validation, so an
-    # empty/invalid guess still consumes an attempt and is appended to history.
-    st.session_state.attempts += 1
-
     ok, guess_int, err = parse_guess(raw_guess, low, high)
 
     if not ok:
-        st.session_state.history.append(raw_guess)
         st.error(err)
     else:
+        # FIX: AI moved attempts increment to after validation — invalid guesses no
+        # longer consume an attempt or get recorded in history.
+        st.session_state.attempts += 1
         st.session_state.history.append(guess_int)
 
         # FIX: AI removed the spurious even-attempt str(secret) cast — always compare ints.
