@@ -219,9 +219,10 @@ if submit:
                     f"Score: {st.session_state.score}"
                 )
 
-    # FIXME: Logic breaks here — submit branch never calls st.rerun(), and the
-    # info/debug/history panels above render BEFORE this handler, so the UI shows
-    # stale state ("guesses populate after a delay").
+        # FIX: AI explained Streamlit reruns — panels above render before this handler
+        # runs, so state updates lag a click. st.rerun() triggers a fresh top-to-bottom
+        # pass so the info/debug/history panels reflect the updated state immediately.
+        st.rerun()
 
 st.divider()
 st.caption("Built by an AI that claims this code is production-ready.")
