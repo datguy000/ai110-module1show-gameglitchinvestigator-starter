@@ -103,8 +103,6 @@ st.sidebar.caption(f"Range: {low} to {high}")
 st.sidebar.caption(f"Attempts allowed: {attempt_limit}")
 
 if "secret" not in st.session_state:
-    # FIXME: Logic breaks here — secret is generated once and cached; changing
-    # difficulty recomputes low/high but never regenerates the secret.
     st.session_state.secret = random.randint(low, high)
 
 if "attempts" not in st.session_state:
@@ -119,6 +117,9 @@ if "status" not in st.session_state:
 if "history" not in st.session_state:
     st.session_state.history = []
 
+if "last_message" not in st.session_state:
+    st.session_state.last_message = ""
+
 # FIX: AI identified that changing difficulty never regenerated the secret. Track the
 # active difficulty in session state; when it changes, reset the round with a new secret
 # in the correct range.
@@ -131,6 +132,7 @@ elif st.session_state.difficulty != difficulty:
     st.session_state.score = 0
     st.session_state.status = "playing"
     st.session_state.history = []
+    st.session_state.last_message = ""
     st.rerun()
 
 st.subheader("Make a guess")
@@ -160,6 +162,10 @@ with col2:
 with col3:
     show_hint = st.checkbox("Show hint", value=True)
 
+# FIX: hint rendered from state here so it survives the st.rerun() in the submit handler.
+if show_hint and st.session_state.get("last_message"):
+    st.warning(st.session_state.last_message)
+
 if new_game:
     # FIX: AI identified incomplete reset — score/status/history were not cleared so
     # a won game would immediately stop again. Also replaced hardcoded randint(1, 100)
@@ -168,6 +174,7 @@ if new_game:
     st.session_state.score = 0
     st.session_state.status = "playing"
     st.session_state.history = []
+    st.session_state.last_message = ""
     st.session_state.secret = random.randint(low, high)
     st.rerun()
 
@@ -192,10 +199,7 @@ if submit:
         # FIX: AI removed the spurious even-attempt str(secret) cast — always compare ints.
         # outcome is now a plain string; message is looked up from MESSAGES.
         outcome = check_guess(guess_int, st.session_state.secret)
-        message = MESSAGES[outcome]
-
-        if show_hint:
-            st.warning(message)
+        st.session_state.last_message = MESSAGES[outcome]
 
         st.session_state.score = update_score(
             current_score=st.session_state.score,
