@@ -1,6 +1,13 @@
 import random
 import streamlit as st
 
+# FIX: hint messages moved to the UI layer since check_guess now returns outcome only.
+MESSAGES = {
+    "Win": "🎉 Correct!",
+    "Too High": "📉 Go LOWER!",
+    "Too Low": "📈 Go HIGHER!",
+}
+
 def get_range_for_difficulty(difficulty: str):
     # FIX: Manual Fix — corrected ranges for Normal and Hard difficulties
     if difficulty == "Easy":
@@ -33,25 +40,15 @@ def parse_guess(raw: str):
 
 
 def check_guess(guess, secret):
+    # FIX: AI identified that check_guess returned a tuple and had a TypeError fallback
+    # for string comparisons that only existed to mask the str(secret) cast at the call
+    # site. Both removed together. Now returns outcome string only (matches test assertions)
+    # and compares ints directly — no try/except needed.
     if guess == secret:
-        return "Win", "🎉 Correct!"
-
-    # FIX: inverted logic swapped for accuracy
-    try:
-        if guess > secret:
-            return "Too High", "📉 Go LOWER!"
-        else:
-            return "Too Low", "📈 Go HIGHER!"
-    except TypeError:
-        # FIXME: Logic breaks here — falls back to lexicographic string comparison
-        # (e.g. "100" < "9"), giving wrong outcomes. Only exists to mask the
-        # str(secret) cast at the call site (~L159).
-        g = str(guess)
-        if g == secret:
-            return "Win", "🎉 Correct!"
-        if g > secret:
-            return "Too High", "📈 Go HIGHER!"
-        return "Too Low", "📉 Go LOWER!"
+        return "Win"
+    if guess > secret:
+        return "Too High"
+    return "Too Low"
 
 
 def update_score(current_score: int, outcome: str, attempt_number: int):
@@ -174,14 +171,10 @@ if submit:
     else:
         st.session_state.history.append(guess_int)
 
-        # FIXME: Logic breaks here — on even attempts the secret is cast to str,
-        # forcing check_guess into its broken string-comparison path. Branch is spurious.
-        if st.session_state.attempts % 2 == 0:
-            secret = str(st.session_state.secret)
-        else:
-            secret = st.session_state.secret
-
-        outcome, message = check_guess(guess_int, secret)
+        # FIX: AI removed the spurious even-attempt str(secret) cast — always compare ints.
+        # outcome is now a plain string; message is looked up from MESSAGES.
+        outcome = check_guess(guess_int, st.session_state.secret)
+        message = MESSAGES[outcome]
 
         if show_hint:
             st.warning(message)
