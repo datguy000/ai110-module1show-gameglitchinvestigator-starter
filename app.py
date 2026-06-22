@@ -119,6 +119,20 @@ if "status" not in st.session_state:
 if "history" not in st.session_state:
     st.session_state.history = []
 
+# FIX: AI identified that changing difficulty never regenerated the secret. Track the
+# active difficulty in session state; when it changes, reset the round with a new secret
+# in the correct range.
+if "difficulty" not in st.session_state:
+    st.session_state.difficulty = difficulty
+elif st.session_state.difficulty != difficulty:
+    st.session_state.difficulty = difficulty
+    st.session_state.secret = random.randint(low, high)
+    st.session_state.attempts = 0
+    st.session_state.score = 0
+    st.session_state.status = "playing"
+    st.session_state.history = []
+    st.rerun()
+
 st.subheader("Make a guess")
 
 st.info(
