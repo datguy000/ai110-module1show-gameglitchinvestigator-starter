@@ -19,7 +19,7 @@ def get_range_for_difficulty(difficulty: str):
     return 1, 50
 
 
-def parse_guess(raw: str):
+def parse_guess(raw: str, low: int, high: int):
     if raw is None:
         return False, None, "Enter a guess."
 
@@ -27,15 +27,19 @@ def parse_guess(raw: str):
         return False, None, "Enter a guess."
 
     try:
+        # Edge case spotted; stretch fix
         if "." in raw:
             value = int(float(raw))
         else:
             value = int(raw)
+
+        # FIX: manual fix, check for out-of-range guesses
+        if value < low or value > high:
+            return False, None, f"Guess must be between {low} and {high}."
+
     except Exception:
         return False, None, "That is not a number."
 
-    # FIXME: Logic breaks here — no range validation; any integer (200, -5) is
-    # accepted because low/high are never passed in or checked.
     return True, value, None
 
 
@@ -163,7 +167,7 @@ if submit:
     # empty/invalid guess still consumes an attempt and is appended to history.
     st.session_state.attempts += 1
 
-    ok, guess_int, err = parse_guess(raw_guess)
+    ok, guess_int, err = parse_guess(raw_guess, low, high)
 
     if not ok:
         st.session_state.history.append(raw_guess)
